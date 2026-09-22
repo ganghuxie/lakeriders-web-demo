@@ -55,21 +55,49 @@ async function startServer() {
       }
     }
 
+    // Get git short SHA
+    let commitSha = 'f3a5310';
+    try {
+      commitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+    } catch {
+      // fallback
+    }
+
     res.json({
       hasDev,
       hasOrig,
       allFilesCount,
       docFiles,
+      version: 'Phase 13',
+      phase: 13,
+      commitSha,
+      buildTime: new Date().toISOString(),
     });
   });
 
-  // Health check endpoint
+  // Health check endpoint - completely open and unauthenticated
   app.get(['/health', '/api/health'], (req, res) => {
+    let commitSha = 'f3a5310';
+    try {
+      commitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+    } catch {
+      // fallback
+    }
+
+    res.set({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Content-Type': 'application/json; charset=utf-8'
+    });
     res.json({
       status: 'ok',
       service: 'lakeriders',
-      version: 'phase-13',
-      uptime: process.uptime(),
+      version: 'Phase 13',
+      phase: 13,
+      commitSha,
+      uptime: Math.floor(process.uptime()),
       ws: '/ws',
       timestamp: new Date().toISOString()
     });
