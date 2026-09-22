@@ -1,0 +1,6 @@
+{
+  "name": "LakeRiders",
+  "description": "LakeRiders 网页游戏开发工作台与运行环境",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
