@@ -1,6 +1,6 @@
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function controlMapping(keys){return {steer:(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)-(keys.has('KeyD')||keys.has('ArrowRight')?1:0),drift:keys.has('ShiftLeft')||keys.has('ShiftRight'),nitro:keys.has('ShiftLeft')||keys.has('ShiftRight')||keys.has('KeyN')};}
-export const attackMapping={KeyQ:-1,KeyE:1,KeyZ:-2,KeyC:2,KeyV:3,KeyB:4};
+export const attackMapping={KeyQ:1,KeyE:-1,KeyZ:2,KeyC:-2,KeyV:3,KeyB:4};
 const tick=(v,dt)=>Math.max(0,v-dt), lerp=(a,b,t)=>a+(b-a)*t;
 export function maxKph(energy,t){for(let i=1;i<t.energyKnots.length;i++)if(energy<=t.energyKnots[i])return lerp(t.speedKnots[i-1],t.speedKnots[i],clamp((energy-t.energyKnots[i-1])/(t.energyKnots[i]-t.energyKnots[i-1]),0,1));return t.speedKnots.at(-1);}
 const TICK_TIMER_KEYS = [
@@ -365,22 +365,14 @@ export class RaceProgress {
     if(delta>length/2)delta-=length;
     if(delta<-length/2)delta+=length;
     this.lastS=at.s;
-    if(delta<0 && Math.abs(delta)>moved+5)return false;
+    const isFinishCrossing=this.checkpoints===9&&delta>0&&(at.s===0||(at.s<50&&this.distance>=length*0.9));
+    if(!isFinishCrossing&&Math.abs(delta)>moved+2)return false;
+    const before=this.distance;
     this.distance+=delta;
-    if(this.distance<0) this.distance=0;
-
-    const expectedCp = Math.min(10, Math.floor((this.distance + 5) / (length / 10)));
-    if(expectedCp > this.checkpoints){
-      this.checkpoints = expectedCp;
-    }
-
-    const isFinishCrossing = (this.distance >= length * 0.98) && (at.s < 40 && this.lastS > length - 40);
-    if(this.distance >= length || isFinishCrossing){
-      this.checkpoints = 10;
-      this.distance = Math.max(this.distance, length);
-      return true;
-    }
-    return false;
+    const threshold=(this.checkpoints+1)*length/10;
+    if(before<threshold&&this.distance>=threshold&&at.distance<=9)this.checkpoints++;
+    if(this.checkpoints===9&&isFinishCrossing&&at.distance<=9){this.checkpoints=10;this.distance=Math.max(this.distance,length);}
+    return this.checkpoints>=10;
   }
 }
 export function selectTarget(targets,x,z,heading,attack){
