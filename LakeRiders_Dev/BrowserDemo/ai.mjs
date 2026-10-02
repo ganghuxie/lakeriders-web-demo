@@ -168,7 +168,7 @@ export class RiderCollisionWorld {
     for(let i=0;i<racers.length;i++)for(let j=i+1;j<racers.length;j++){
       const a=racers[i],b=racers[j];if(a.sim.crashLeft>0||b.sim.crashLeft>0||a.sim.airLeft>0||b.sim.airLeft>0||a.sim.finished||b.sim.finished)continue;
       const dx=b.x-a.x,dz=b.z-a.z,distance=Math.hypot(dx,dz);if(distance>=.92)continue;
-      const nx=distance>.001?dx/distance:1,nz=distance>.001?dz/distance:0,push=(.92-distance)/2+.02;
+      const nx=distance>.001?dx/distance:1,nz=distance>.001?dz/distance:0,push=Math.max((.92-distance)*.5,.025);
       a.nudge(-nx*push,-nz*push);b.nudge(nx*push,nz*push);
       const key=a.id<b.id?a.id+'|'+b.id:b.id+'|'+a.id;if((this.cooldowns.get(key)||0)>0)continue;
       this.cooldowns.set(key,.55);

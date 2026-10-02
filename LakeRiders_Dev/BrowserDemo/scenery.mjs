@@ -114,11 +114,9 @@ export function createSayramLakeWater(scene, data) {
   waterTex.wrapT = THREE.RepeatWrapping;
   waterTex.repeat.set(24, 24);
 
-  const waterMaterial = new THREE.MeshStandardMaterial({
+  const waterMaterial = new THREE.MeshLambertMaterial({
     color: '#2898b5',
     map: waterTex,
-    roughness: 0.12,
-    metalness: 0.45,
     transparent: true,
     opacity: 0.94,
     side: THREE.DoubleSide
@@ -136,7 +134,7 @@ export function createSayramLakeWater(scene, data) {
     const a = [p.x * 0.92, -p.z * 0.92];
     i ? shoreShape.lineTo(...a) : shoreShape.moveTo(...a);
   });
-  const shoreMat = new THREE.MeshStandardMaterial({ color: '#578e91', roughness: 0.9 });
+  const shoreMat = new THREE.MeshLambertMaterial({ color: '#578e91' });
   const shoreMesh = new THREE.Mesh(new THREE.ShapeGeometry(shoreShape), shoreMat);
   shoreMesh.position.set(0, -0.06, 0);
   shoreMesh.rotation.x = -Math.PI / 2;
@@ -151,7 +149,7 @@ export function createSayramLakeWater(scene, data) {
   };
 }
 
-// Kazakh Traditional White Yurts (哈萨克白色毡房群)
+// Kazakh Traditional White Yurts (哈萨克白色毡房群) - Optimized with InstancedMesh
 export function createKazakhYurts(scene, track) {
   const group = new THREE.Group();
   scene.add(group);
@@ -167,65 +165,149 @@ export function createKazakhYurts(scene, track) {
     { s: 2860, offset: 25, count: 3, rot: 0.3 }
   ];
 
-  const feltMat = new THREE.MeshStandardMaterial({ color: '#f5f7f2', roughness: 0.9 });
-  const bandMat = new THREE.MeshStandardMaterial({ color: '#b93838', roughness: 0.8 });
-  const woodMat = new THREE.MeshStandardMaterial({ color: '#5a3d24', roughness: 0.9 });
-  const crownMat = new THREE.MeshStandardMaterial({ color: '#d99a38', roughness: 0.6 });
+  const feltMat = new THREE.MeshLambertMaterial({ color: '#f5f7f2' });
+  const bandMat = new THREE.MeshLambertMaterial({ color: '#b93838' });
+  const woodMat = new THREE.MeshLambertMaterial({ color: '#5a3d24' });
+  const crownMat = new THREE.MeshLambertMaterial({ color: '#d99a38' });
+
+  // Calculate total yurts
+  let totalYurts = 0;
+  for (const loc of yurtLocations) totalYurts += loc.count;
+
+  const dummy = new THREE.Object3D();
+  const dummyPart = new THREE.Object3D();
+  const root = new THREE.Object3D();
+
+  const wallMatrices = [];
+  const bandMatrices = [];
+  const roofMatrices = [];
+  const crownMatrices = [];
+  const doorMatrices = [];
+  const postMatrices = [];
+  const railMatrices = [];
 
   for (const loc of yurtLocations) {
     const a = track.sample(loc.s);
     for (let i = 0; i < loc.count; i++) {
-      const yurt = new THREE.Group();
       const spreadX = (i - loc.count / 2) * 11 + (i % 2) * 4;
       const spreadZ = (i % 2) * 8;
       const px = a.x + a.rx * (loc.offset + spreadX);
       const pz = a.z + a.rz * (loc.offset + spreadZ);
-      yurt.position.set(px, 0, pz);
-      yurt.rotation.y = loc.rot + i * 0.5;
+      const rotY = loc.rot + i * 0.5;
+
+      root.position.set(px, 0, pz);
+      root.rotation.set(0, rotY, 0);
+      root.scale.set(1, 1, 1);
+      root.updateMatrix();
 
       const radius = 4.2 + (i % 2) * 0.6;
       const wallH = 2.2;
       const roofH = 1.9;
+      const scaleR = radius / 4.2;
 
       // Base cylinder
-      const wall = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, wallH, 16), feltMat);
-      wall.position.y = wallH / 2;
-      yurt.add(wall);
+      dummyPart.position.set(0, wallH / 2, 0);
+      dummyPart.rotation.set(0, 0, 0);
+      dummyPart.scale.set(scaleR, 1, scaleR);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      wallMatrices.push(dummy.matrix.clone());
 
-      // Red geometric ethnic band around wall
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.04, radius + 0.04, 0.45, 16), bandMat);
-      band.position.y = wallH * 0.65;
-      yurt.add(band);
+      // Red band
+      dummyPart.position.set(0, wallH * 0.65, 0);
+      dummyPart.rotation.set(0, 0, 0);
+      dummyPart.scale.set(scaleR, 1, scaleR);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      bandMatrices.push(dummy.matrix.clone());
 
       // Conical dome roof
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(radius + 0.35, roofH, 16), feltMat);
-      roof.position.y = wallH + roofH / 2;
-      yurt.add(roof);
+      dummyPart.position.set(0, wallH + roofH / 2, 0);
+      dummyPart.rotation.set(0, 0, 0);
+      dummyPart.scale.set(scaleR, 1, scaleR);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      roofMatrices.push(dummy.matrix.clone());
 
-      // Top golden smoke ring (Shanyrak)
-      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.12, 6, 16), crownMat);
-      crown.position.y = wallH + roofH + 0.1;
-      crown.rotation.x = Math.PI / 2;
-      yurt.add(crown);
+      // Crown
+      dummyPart.position.set(0, wallH + roofH + 0.1, 0);
+      dummyPart.rotation.set(Math.PI / 2, 0, 0);
+      dummyPart.scale.set(1, 1, 1);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      crownMatrices.push(dummy.matrix.clone());
 
-      // Wooden door
-      const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.6, 0.2), woodMat);
-      door.position.set(0, 0.8, radius * 0.98);
-      yurt.add(door);
+      // Door
+      dummyPart.position.set(0, 0.8, radius * 0.98);
+      dummyPart.rotation.set(0, 0, 0);
+      dummyPart.scale.set(1, 1, 1);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      doorMatrices.push(dummy.matrix.clone());
 
-      // Wooden pasture fence nearby
+      // Posts (3 per yurt)
       for (let f = -1; f <= 1; f++) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.4, 5), woodMat);
-        post.position.set(f * 2.8, 0.7, radius + 2.5);
-        yurt.add(post);
+        dummyPart.position.set(f * 2.8, 0.7, radius + 2.5);
+        dummyPart.rotation.set(0, 0, 0);
+        dummyPart.scale.set(1, 1, 1);
+        dummyPart.updateMatrix();
+        dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+        postMatrices.push(dummy.matrix.clone());
       }
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.1, 0.08), woodMat);
-      rail.position.set(0, 1.05, radius + 2.5);
-      yurt.add(rail);
 
-      group.add(yurt);
+      // Rail
+      dummyPart.position.set(0, 1.05, radius + 2.5);
+      dummyPart.rotation.set(0, 0, 0);
+      dummyPart.scale.set(1, 1, 1);
+      dummyPart.updateMatrix();
+      dummy.matrix.multiplyMatrices(root.matrix, dummyPart.matrix);
+      railMatrices.push(dummy.matrix.clone());
     }
   }
+
+  // Build batch instanced meshes
+  const wallGeom = new THREE.CylinderGeometry(4.2, 4.2, 2.2, 16);
+  const wallInst = new THREE.InstancedMesh(wallGeom, feltMat, wallMatrices.length);
+  for (let i = 0; i < wallMatrices.length; i++) wallInst.setMatrixAt(i, wallMatrices[i]);
+  wallInst.computeBoundingSphere();
+  group.add(wallInst);
+
+  const bandGeom = new THREE.CylinderGeometry(4.24, 4.24, 0.45, 16);
+  const bandInst = new THREE.InstancedMesh(bandGeom, bandMat, bandMatrices.length);
+  for (let i = 0; i < bandMatrices.length; i++) bandInst.setMatrixAt(i, bandMatrices[i]);
+  bandInst.computeBoundingSphere();
+  group.add(bandInst);
+
+  const roofGeom = new THREE.ConeGeometry(4.55, 1.9, 16);
+  const roofInst = new THREE.InstancedMesh(roofGeom, feltMat, roofMatrices.length);
+  for (let i = 0; i < roofMatrices.length; i++) roofInst.setMatrixAt(i, roofMatrices[i]);
+  roofInst.computeBoundingSphere();
+  group.add(roofInst);
+
+  const crownGeom = new THREE.TorusGeometry(0.7, 0.12, 6, 16);
+  const crownInst = new THREE.InstancedMesh(crownGeom, crownMat, crownMatrices.length);
+  for (let i = 0; i < crownMatrices.length; i++) crownInst.setMatrixAt(i, crownMatrices[i]);
+  crownInst.computeBoundingSphere();
+  group.add(crownInst);
+
+  const doorGeom = new THREE.BoxGeometry(1.1, 1.6, 0.2);
+  const doorInst = new THREE.InstancedMesh(doorGeom, woodMat, doorMatrices.length);
+  for (let i = 0; i < doorMatrices.length; i++) doorInst.setMatrixAt(i, doorMatrices[i]);
+  doorInst.computeBoundingSphere();
+  group.add(doorInst);
+
+  const postGeom = new THREE.CylinderGeometry(0.08, 0.1, 1.4, 5);
+  const postInst = new THREE.InstancedMesh(postGeom, woodMat, postMatrices.length);
+  for (let i = 0; i < postMatrices.length; i++) postInst.setMatrixAt(i, postMatrices[i]);
+  postInst.computeBoundingSphere();
+  group.add(postInst);
+
+  const railGeom = new THREE.BoxGeometry(6.2, 0.1, 0.08);
+  const railInst = new THREE.InstancedMesh(railGeom, woodMat, railMatrices.length);
+  for (let i = 0; i < railMatrices.length; i++) railInst.setMatrixAt(i, railMatrices[i]);
+  railInst.computeBoundingSphere();
+  group.add(railInst);
+
   return group;
 }
 
@@ -243,80 +325,83 @@ export function createWildSwans(scene, track) {
     { s: 2680, shoreOffset: 19, count: 6 } // Swan Waterfront Beach
   ];
 
-  const swanBodyMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 });
-  const beakMat = new THREE.MeshStandardMaterial({ color: '#ff6f00', roughness: 0.5 });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: '#10252d' });
+  let totalSwans = 0;
+  for (const loc of swanLocations) totalSwans += loc.count;
+
+  const swanBodyMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+  const beakMat = new THREE.MeshLambertMaterial({ color: '#ff6f00' });
   const rippleMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.35, side: THREE.DoubleSide });
 
-  const swans = [];
+  const bodyGeom = new THREE.SphereGeometry(0.48, 10, 7);
+  const neckGeom = new THREE.CylinderGeometry(0.08, 0.12, 0.7, 7);
+  const beakGeom = new THREE.ConeGeometry(0.06, 0.22, 5);
+  const rippleGeom = new THREE.RingGeometry(0.45, 0.75, 12);
+
+  const bodyInst = new THREE.InstancedMesh(bodyGeom, swanBodyMat, totalSwans);
+  const neckInst = new THREE.InstancedMesh(neckGeom, swanBodyMat, totalSwans);
+  const beakInst = new THREE.InstancedMesh(beakGeom, beakMat, totalSwans);
+  const rippleInst = new THREE.InstancedMesh(rippleGeom, rippleMat, totalSwans);
+
+  const dummy = new THREE.Object3D();
+  let idx = 0;
 
   for (const loc of swanLocations) {
     const a = track.sample(loc.s);
     for (let i = 0; i < loc.count; i++) {
-      const swan = new THREE.Group();
       const ox = (i - loc.count / 2) * 4.5 + Math.sin(i * 1.5) * 3;
       const oz = (i % 2) * 4.2 + Math.cos(i) * 2;
       const px = a.x + a.rx * (loc.shoreOffset + ox);
       const pz = a.z + a.rz * (loc.shoreOffset + oz);
+      const rotY = Math.atan2(a.fx, a.fz) + (i % 2 ? 0.3 : -0.5);
 
-      swan.position.set(px, 0.04, pz);
-      swan.rotation.y = Math.atan2(a.fx, a.fz) + (i % 2 ? 0.3 : -0.5);
+      // Swan body
+      dummy.position.set(px, 0.28, pz);
+      dummy.rotation.set(0, rotY, 0);
+      dummy.scale.set(1.4, 0.7, 0.9);
+      dummy.updateMatrix();
+      bodyInst.setMatrixAt(idx, dummy.matrix);
 
-      // Swan body (smooth capsule/ellipsoid)
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.48, 12, 8), swanBodyMat);
-      body.scale.set(1.4, 0.7, 0.9);
-      body.position.y = 0.25;
-      swan.add(body);
+      // Neck & head
+      const forwardX = Math.sin(rotY);
+      const forwardZ = Math.cos(rotY);
+      dummy.position.set(px + forwardX * 0.45, 0.65, pz + forwardZ * 0.45);
+      dummy.rotation.set(0, rotY, 0.2);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      neckInst.setMatrixAt(idx, dummy.matrix);
 
-      // Tail feathers
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.45, 6), swanBodyMat);
-      tail.position.set(-0.55, 0.35, 0);
-      tail.rotation.z = Math.PI * 0.75;
-      swan.add(tail);
+      // Beak
+      dummy.position.set(px + forwardX * 0.65, 0.95, pz + forwardZ * 0.65);
+      dummy.rotation.set(-Math.PI / 2, rotY, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      beakInst.setMatrixAt(idx, dummy.matrix);
 
-      // Elegant S-curved neck
-      const neckLower = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.55, 8), swanBodyMat);
-      neckLower.position.set(0.45, 0.52, 0);
-      neckLower.rotation.z = -0.3;
-      swan.add(neckLower);
+      // Ripple ring
+      dummy.position.set(px, 0.02, pz);
+      dummy.rotation.set(-Math.PI / 2, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      rippleInst.setMatrixAt(idx, dummy.matrix);
 
-      const neckUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.45, 8), swanBodyMat);
-      neckUpper.position.set(0.55, 0.88, 0);
-      neckUpper.rotation.z = 0.2;
-      swan.add(neckUpper);
-
-      // Head & Beak
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), swanBodyMat);
-      head.position.set(0.62, 1.06, 0);
-      swan.add(head);
-
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 6), beakMat);
-      beak.position.set(0.74, 1.03, 0);
-      beak.rotation.z = -Math.PI / 2;
-      swan.add(beak);
-
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4), eyeMat);
-      eye.position.set(0.64, 1.08, 0.1);
-      swan.add(eye);
-
-      // Gentle floating water ripple ring
-      const ripple = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.75, 16), rippleMat);
-      ripple.rotation.x = -Math.PI / 2;
-      ripple.position.y = 0.02;
-      swan.add(ripple);
-
-      group.add(swan);
-      swans.push({ mesh: swan, baseY: 0.04, phase: i * 1.8 });
+      idx++;
     }
   }
 
+  bodyInst.computeBoundingSphere();
+  neckInst.computeBoundingSphere();
+  beakInst.computeBoundingSphere();
+  rippleInst.computeBoundingSphere();
+
+  group.add(bodyInst);
+  group.add(neckInst);
+  group.add(beakInst);
+  group.add(rippleInst);
+
   return {
     group,
-    update(time) {
-      for (const s of swans) {
-        s.mesh.position.y = s.baseY + Math.sin(time * 2.2 + s.phase) * 0.04;
-        s.mesh.rotation.z = Math.sin(time * 1.6 + s.phase) * 0.03;
-      }
+    update(time, cameraPos = null) {
+      // Instanced meshes are static and batched for maximum 60FPS throughput
     }
   };
 }
@@ -325,9 +410,9 @@ export function createSnowMountains(scene) {
   const group = new THREE.Group();
   scene.add(group);
   const mountainCount = 36;
-  const rockMaterialA = new THREE.MeshStandardMaterial({ color: '#4a626a', roughness: 0.95 });
-  const rockMaterialB = new THREE.MeshStandardMaterial({ color: '#58737c', roughness: 0.95 });
-  const snowMaterial = new THREE.MeshStandardMaterial({ color: '#f8fbff', roughness: 0.5, metalness: 0.05 });
+  const rockMaterialA = new THREE.MeshLambertMaterial({ color: '#4a626a' });
+  const rockMaterialB = new THREE.MeshLambertMaterial({ color: '#58737c' });
+  const snowMaterial = new THREE.MeshLambertMaterial({ color: '#f8fbff' });
 
   const dummy = new THREE.Object3D();
   const baseATransforms = [];
@@ -447,9 +532,9 @@ export function createSprucePines(scene, track, count = 180) {
   const group = new THREE.Group();
   scene.add(group);
 
-  const foliageMaterialA = new THREE.MeshStandardMaterial({ color: '#1e3d26', roughness: 0.9 });
-  const foliageMaterialB = new THREE.MeshStandardMaterial({ color: '#152d1c', roughness: 0.95 });
-  const trunkMaterial = new THREE.MeshStandardMaterial({ color: '#382516', roughness: 1.0 });
+  const foliageMaterialA = new THREE.MeshLambertMaterial({ color: '#1e3d26' });
+  const foliageMaterialB = new THREE.MeshLambertMaterial({ color: '#152d1c' });
+  const trunkMaterial = new THREE.MeshLambertMaterial({ color: '#382516' });
 
   const dummy = new THREE.Object3D();
   const trunkTransforms = [];
@@ -533,7 +618,7 @@ export function createSkyClouds(scene, count = 16) {
 export function createLakesideRails(scene, track) {
   const group = new THREE.Group();
   scene.add(group);
-  const woodMaterial = new THREE.MeshStandardMaterial({ color: '#553c26', roughness: 0.85 });
+  const woodMaterial = new THREE.MeshLambertMaterial({ color: '#553c26' });
 
   const dummy = new THREE.Object3D();
   const postTransforms = [];
@@ -591,9 +676,9 @@ export function createScenicLandmarks(scene, track) {
   const group = new THREE.Group();
   scene.add(group);
 
-  const woodMat = new THREE.MeshStandardMaterial({ color: '#3d2817', roughness: 0.9 });
-  const stoneMat = new THREE.MeshStandardMaterial({ color: '#7a8585', roughness: 0.95 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: '#d4aa38', roughness: 0.4, metalness: 0.3 });
+  const woodMat = new THREE.MeshLambertMaterial({ color: '#3d2817' });
+  const stoneMat = new THREE.MeshLambertMaterial({ color: '#7a8585' });
+  const goldMat = new THREE.MeshLambertMaterial({ color: '#d4aa38' });
 
   for (const landmark of SAYRAM_LANDMARKS) {
     const a = track.sample(landmark.s);
@@ -891,14 +976,14 @@ export function createGrandFinishArch(scene, track) {
   group.position.set(at.x, 0, at.z);
   group.rotation.y = rot;
 
-  const woodMat = new THREE.MeshStandardMaterial({ color: '#2e1b10', roughness: 0.85 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: '#f59e0b', roughness: 0.35, metalness: 0.4 });
-  const darkTrussMat = new THREE.MeshStandardMaterial({ color: '#15252b', roughness: 0.7 });
+  const woodMat = new THREE.MeshLambertMaterial({ color: '#2e1b10' });
+  const goldMat = new THREE.MeshLambertMaterial({ color: '#f59e0b' });
+  const darkTrussMat = new THREE.MeshLambertMaterial({ color: '#15252b' });
 
   // Main dual side pillars spanning 17 meters
   for (const sx of [-8.5, 8.5]) {
     // Stone foundation
-    const foundation = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 1.8), new THREE.MeshStandardMaterial({ color: '#687577', roughness: 0.9 }));
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 1.8), new THREE.MeshLambertMaterial({ color: '#687577' }));
     foundation.position.set(sx, 0.35, 0);
     group.add(foundation);
 
@@ -1380,10 +1465,23 @@ export function createPodiumCelebration(scene, track) {
   let flashTimer = 0;
   let flashNext = 1.2;
 
+  // Initially hide podium until finish or approaching finish
+  group.visible = false;
   scene.add(group);
 
   return {
     group,
+    setStage(stage) {
+      // 0: empty, 1: 1st place only, 2: 1st & 2nd, 3+: all 3 winners
+      winnerRiders.forEach((w, idx) => {
+        const shouldShow = (stage > idx);
+        if (!w.group.visible && shouldShow) {
+          // Bounce-in scale effect
+          w.group.scale.setScalar(tierConfigs[idx].scale * 1.3);
+        }
+        w.group.visible = shouldShow;
+      });
+    },
     updateWinners(racers) {
       if (!racers || racers.length === 0) return;
       for (let i = 0; i < Math.min(3, racers.length); i++) {
@@ -1411,8 +1509,12 @@ export function createPodiumCelebration(scene, track) {
       }
     },
     update(dt, elapsed) {
+      if (!group.visible) return;
       // 1. Cheering animations for the 3 winners
       winnerRiders.forEach((w, idx) => {
+        if (!w.group.visible) return;
+        // Smooth scale return
+        w.group.scale.lerp(new THREE.Vector3().setScalar(tierConfigs[idx].scale), 1 - Math.exp(-dt * 6));
         const phase = elapsed * 3.5 + idx * 1.8;
         // Waving and raising trophy joyfully
         if (w.rank === 1) {

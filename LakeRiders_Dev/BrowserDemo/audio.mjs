@@ -1,56 +1,225 @@
-// LakeRiders Web Audio Synthesizer Engine (Phase 10 / Realistic SFX & QQ Speed Style BGM)
+// LakeRiders Web Audio Synthesizer Engine (Phase 11 / Authentic QQ Speed Lobby & Racing BGM)
 // Pure procedural multi-channel synthesis without external audio file dependencies.
 
-const NOTE_FREQS = {
-  'C3': 130.81, 'D3': 146.83, 'Eb3': 155.56, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'Ab3': 207.65, 'A3': 220.00, 'Bb3': 233.08, 'B3': 246.94,
-  'C4': 261.63, 'D4': 293.66, 'Eb4': 311.13, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'Ab4': 415.30, 'A4': 440.00, 'Bb4': 466.16, 'B4': 493.88,
-  'C5': 523.25, 'D5': 587.33, 'Eb5': 622.25, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'Ab5': 830.61, 'A5': 880.00, 'Bb5': 932.33, 'B5': 987.77,
-  'C6': 1046.50, 'D6': 1174.66
-};
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const ALIASES = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+const NOTE_FREQS = {};
+for (let octave = 1; octave <= 7; octave++) {
+  for (let i = 0; i < 12; i++) {
+    const semitone = (octave - 4) * 12 + i - 9; // A4 is 440 Hz
+    const freq = Math.round(440 * Math.pow(2, semitone / 12) * 100) / 100;
+    NOTE_FREQS[NOTE_NAMES[i] + octave] = freq;
+  }
+}
+for (const [flat, sharp] of Object.entries(ALIASES)) {
+  for (let octave = 1; octave <= 7; octave++) {
+    NOTE_FREQS[flat + octave] = NOTE_FREQS[sharp + octave];
+  }
+}
 
-// 4 Iconic QQ Speed Style High-Octane Racing Tracks
-export const BGM_TRACKS = [
+// 2 Iconic QQ Speed Lobby Tracks (2首大厅音乐 - 官方游戏内置原声)
+export const QQ_LOBBY_TRACKS = [
   {
-    title: '极速漂移 · Speed Drift',
-    subtitle: 'QQ飞车风 · 经典欧陆电子摇滚',
-    bpm: 140,
-    bass: ['D3','D3','D3','D3', 'F3','F3','F3','F3', 'G3','G3','G3','G3', 'Bb3','Bb3','A3','A3'],
-    melody: ['D5','F5','A5','G5', 'F5','D5','E5','F5', 'G5','A5','Bb5','A5', 'G5','E5','F5','D5',
-             'A5','A5','Bb5','A5', 'G5','F5','E5','F5', 'G5','D5','F5','G5', 'A5','G5','E5','D5'],
-    chords: [['D4','F4','A4'], ['F4','A4','C5'], ['G4','Bb4','D5'], ['Bb4','D5','F5']]
-  },
-  {
-    title: '天山狂飙 · Alpine Rush',
-    subtitle: '高燃电音 · 赛湖雪山飞驰',
-    bpm: 134,
-    bass: ['A3','A3','C4','A3', 'G3','G3','B3','G3', 'F3','F3','A3','F3', 'E3','E3','G3','E3'],
-    melody: ['E5','A5','B5','C6', 'B5','A5','G5','E5', 'F5','A5','C6','B5', 'A5','G5','E5','A5',
-             'C6','C6','B5','A5', 'G5','E5','G5','A5', 'B5','C6','D6','C6', 'B5','A5','G5','A5'],
-    chords: [['A4','C5','E5'], ['G4','B4','D5'], ['F4','A4','C5'], ['E4','G4','B4']]
-  },
-  {
-    title: '电音脉冲 · Cyber Pulse',
-    subtitle: '飞车放克 · 动感低音推进',
+    id: 'lobby-loves-me-not',
+    title: 'Loves Me Not',
+    artist: 't.A.T.u.',
+    category: 'lobby',
+    categoryName: '大厅音乐',
+    subtitle: 'QQ飞车经典第一大厅神曲 · 原声内置',
+    builtinUrl: './assets/music/loves_me_not.mp3',
+    builtinName: 't.A.T.u. - Loves Me Not',
+    duration: '3:12',
     bpm: 128,
-    bass: ['E3','E3','G3','E3', 'A3','A3','G3','E3', 'D3','D3','F3','D3', 'B3','B3','A3','G3'],
-    melody: ['B5','E5','G5','B5', 'A5','G5','E5','D5', 'E5','G5','A5','B5', 'D6','B5','A5','G5',
-             'G5','A5','B5','E5', 'G5','E5','D5','B4', 'D5','E5','G5','A5', 'G5','E5','D5','E5'],
-    chords: [['E4','G4','B4'], ['A4','C5','E5'], ['D4','F4','A4'], ['B4','D5','F#5']]
+    drumStyle: 'four-on-the-floor',
+    bass: ['E3','E3','E3','E3', 'C3','C3','C3','C3', 'G3','G3','G3','G3', 'D3','D3','D3','D3'],
+    melody: [
+      'B4','E5','G5','E5', 'B4','E5','G5','E5', 'B5','A5','G5','F#5', 'E5','D5','E5','G5',
+      'C5','E5','G5','E5', 'C5','E5','G5','E5', 'G5','A5','B5','A5', 'G5','E5','G5','E5',
+      'B4','D5','G5','D5', 'B4','D5','G5','D5', 'D6','B5','G5','A5', 'B5','A5','G5','D5',
+      'A4','D5','F#5','D5', 'A4','D5','F#5','D5', 'A5','G5','F#5','E5', 'D5','F#5','E5','D5'
+    ],
+    chords: [['E4','G4','B4'], ['C4','E4','G4'], ['G4','B4','D5'], ['D4','F#4','A4']]
   },
   {
-    title: '赛湖微风 · Sayram Breeze',
-    subtitle: '明朗竞速 · 高原湖畔燃曲',
-    bpm: 118,
-    bass: ['G3','G3','B3','G3', 'C4','C4','E4','C4', 'D4','D4','F#4','D4', 'G3','G3','B3','D4'],
-    melody: ['D5','G5','A5','B5', 'C6','B5','A5','G5', 'A5','B5','A5','G5', 'E5','G5','A5','B5',
-             'D6','B5','G5','A5', 'B5','A5','G5','E5', 'G5','A5','B5','D6', 'B5','A5','G5','G5'],
-    chords: [['G4','B4','D5'], ['C4','E4','G4'], ['D4','F#4','A4'], ['G4','B4','D5']]
+    id: 'lobby-right-now',
+    title: 'Right Now (Na Na Na)',
+    artist: 'Akon (阿肯)',
+    category: 'lobby',
+    categoryName: '大厅音乐',
+    subtitle: 'QQ飞车经典动感大厅 · 原声内置',
+    builtinUrl: './assets/music/right_now.mp3',
+    builtinName: 'Akon - Right Now (Na Na Na)',
+    duration: '4:01',
+    bpm: 130,
+    drumStyle: 'four-on-the-floor',
+    bass: ['F#2','F#2','A2','F#2', 'D3','D3','F#3','D3', 'A2','A2','C#3','A2', 'E2','E2','G#2','E2'],
+    melody: [
+      'C#5','C#5','C#5','B4', 'A4','B4','C#5','A4', 'C#5','C#5','B4','A4', 'B4','C#5','B4','A4',
+      'D5','D5','D5','C#5', 'B4','C#5','D5','B4', 'D5','D5','C#5','B4', 'C#5','D5','C#5','B4',
+      'C#5','E5','E5','C#5', 'A4','B4','C#5','E5', 'E5','F#5','E5','C#5', 'B4','A4','B4','C#5',
+      'B4','B4','B4','A4', 'G#4','A4','B4','G#4', 'A4','B4','C#5','B4', 'A4','G#4','A4','B4'
+    ],
+    chords: [['F#4','A4','C#5'], ['D4','F#4','A4'], ['A4','C#5','E5'], ['E4','G#4','B4']]
   }
 ];
+
+// 2+ Iconic QQ Speed In-Game Racing Tracks (2首骑行比赛狂飙音乐 - 官方游戏内置原声)
+export const QQ_RACE_TRACKS = [
+  {
+    id: 'race-let-you-go',
+    title: 'Let You Go',
+    artist: 'Ashley Parker Angel',
+    category: 'race',
+    categoryName: '比赛音乐',
+    subtitle: '秋名山/十一城第一狂飙战歌 · 原声内置',
+    builtinUrl: './assets/music/let_you_go.mp3',
+    builtinName: 'Ashley Parker Angel - Let U Go',
+    duration: '3:40',
+    bpm: 152,
+    drumStyle: 'rock-driving',
+    bass: ['B2','B2','B2','B2', 'G2','G2','G2','G2', 'D3','D3','D3','D3', 'A2','A2','A2','A2'],
+    melody: [
+      'F#5','F#5','F#5','E5', 'D5','B4','D5','E5', 'F#5','F#5','E5','D5', 'F#5','A5','F#5','E5',
+      'G5','G5','G5','F#5', 'E5','D5','B4','D5', 'G5','A5','B5','A5', 'G5','F#5','E5','D5',
+      'A5','A5','F#5','E5', 'D5','F#5','A5','D6', 'C#6','B5','A5','F#5', 'E5','D5','E5','F#5',
+      'E5','E5','D5','C#5', 'B4','A4','B4','C#5', 'D5','E5','F#5','A5', 'F#5','E5','D5','B4'
+    ],
+    chords: [['B3','D4','F#4'], ['G3','B3','D4'], ['D4','F#4','A4'], ['A3','C#4','E4']]
+  },
+  {
+    id: 'race-numb',
+    title: 'Numb',
+    artist: 'Linkin Park (林肯公园)',
+    category: 'race',
+    categoryName: '比赛音乐',
+    subtitle: 'QQ飞车神级高燃战歌 · 原声内置',
+    builtinUrl: './assets/music/numb.mp3',
+    builtinName: 'Linkin Park - Numb',
+    duration: '3:07',
+    bpm: 112,
+    drumStyle: 'rock-driving',
+    bass: ['E2','E2','E2','E2', 'C2','C2','C2','C2', 'G2','G2','G2','G2', 'D2','D2','D2','D2'],
+    melody: [
+      // Intro synth hook & verse
+      'E5','G5','F#5','D5', 'E5','G5','F#5','D5', 'E5','D5','B4','G4', 'A4','B4','G4','E4',
+      // Verse build-up
+      'C5','E5','D5','B4', 'C5','E5','D5','B4', 'C5','B4','A4','G4', 'A4','B4','A4','G4',
+      // Chorus: "I've become so numb, I can't feel you there..."
+      'E5','E5','D5','C5', 'B4','B4','C5','B4', 'E5','E5','D5','C5', 'B4','A4','B4','A4',
+      // Chorus 2: "Become so tired, so much more aware... Is be more like me..."
+      'A4','B4','C5','D5', 'C5','B4','A4','G4', 'G4','A4','B4','A4', 'G4','F#4','E4','E4'
+    ],
+    chords: [['E3','G3','B3'], ['C3','E3','G3'], ['G3','B3','D4'], ['D3','F#3','A3']]
+  },
+  {
+    id: 'race-faint',
+    title: 'Faint',
+    artist: 'Linkin Park (林肯公园)',
+    category: 'race',
+    categoryName: '比赛音乐',
+    subtitle: '极致爆裂狂飙双喷战歌 · 原声内置',
+    builtinUrl: './assets/music/faint.mp3',
+    builtinName: 'Linkin Park - Faint',
+    duration: '2:42',
+    bpm: 135,
+    drumStyle: 'rock-driving',
+    bass: ['D2','D2','D2','D2', 'F2','F2','F2','F2', 'C2','C2','C2','C2', 'G2','G2','G2','G2'],
+    melody: [
+      'D5','D5','F5','E5', 'D5','D5','C5','A4', 'D5','D5','F5','G5', 'F5','E5','D5','C5',
+      'D5','F5','A5','G5', 'F5','D5','F5','E5', 'D5','F5','G5','A5', 'G5','F5','E5','D5'
+    ],
+    chords: [['D3','F3','A3'], ['F3','A3','C4'], ['C3','E3','G3'], ['G3','B3','D4']]
+  }
+];
+
+// Unified BGM Tracks list for backwards compatibility
+export const BGM_TRACKS = [...QQ_LOBBY_TRACKS, ...QQ_RACE_TRACKS];
+
+// IndexedDB persistence for user-uploaded genuine MP3 / audio files
+const AUDIO_DB_NAME = 'LakeRiders_Audio_V2';
+const AUDIO_STORE_NAME = 'user_audio_tracks';
+
+function openAudioDB() {
+  return new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') return resolve(null);
+    try {
+      const req = indexedDB.open(AUDIO_DB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(AUDIO_STORE_NAME)) {
+          db.createObjectStore(AUDIO_STORE_NAME, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+export async function saveAudioToStorage(trackId, fileOrBlob, metadata = {}) {
+  const db = await openAudioDB();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(AUDIO_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(AUDIO_STORE_NAME);
+      const record = {
+        id: trackId,
+        blob: fileOrBlob,
+        name: metadata.name || fileOrBlob.name || trackId,
+        size: fileOrBlob.size,
+        type: fileOrBlob.type || 'audio/mpeg',
+        updatedAt: Date.now()
+      };
+      store.put(record);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (_) {
+      resolve(false);
+    }
+  });
+}
+
+export async function removeAudioFromStorage(trackId) {
+  const db = await openAudioDB();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(AUDIO_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(AUDIO_STORE_NAME);
+      store.delete(trackId);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (_) {
+      resolve(false);
+    }
+  });
+}
+
+export async function loadAllAudioFromStorage() {
+  const db = await openAudioDB();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(AUDIO_STORE_NAME, 'readonly');
+      const store = tx.objectStore(AUDIO_STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    } catch (_) {
+      resolve([]);
+    }
+  });
+}
 
 export class RacingBgmPlayer {
   constructor(soundEngine) {
     this.engine = soundEngine;
+    this.mode = 'lobby'; // 'lobby' | 'race'
+    this.lobbyIndex = 0;
+    this.raceIndex = 0;
     this.currentTrackIndex = 0;
     this.isPlaying = false;
     this.stepIndex = 0;
@@ -59,28 +228,430 @@ export class RacingBgmPlayer {
     this.bgmGain = null;
     this.lookahead = 0.04; // 40ms
     this.scheduleAheadTime = 0.2; // 200ms
+    this._snareNoiseBuf = null;
+    this._hihatNoiseBuf = null;
+    this._renderedBuffers = {};
+    this._activeSource = null;
+    this._renderingPromises = {};
+
+    // HTML5 Real Audio Player for user-uploaded MP3/WAV/etc.
+    this._htmlAudio = null;
+    this.userVolume = 0.85;
+    this.customAudioMap = new Map(); // trackId -> { url, blob, name, size }
+    this._dbLoaded = false;
+    this._loadPersistedAudios();
+  }
+
+  async _loadPersistedAudios() {
+    try {
+      const records = await loadAllAudioFromStorage();
+      for (const rec of records) {
+        if (rec.id && rec.blob) {
+          const url = URL.createObjectURL(rec.blob);
+          this.customAudioMap.set(rec.id, {
+            url,
+            blob: rec.blob,
+            name: rec.name,
+            size: rec.size,
+            updatedAt: rec.updatedAt
+          });
+        }
+      }
+      this._dbLoaded = true;
+    } catch (e) {
+      console.warn('Load persisted audio tracks failed:', e);
+    }
   }
 
   init(ctx, masterGain) {
     if (!ctx || !masterGain) return;
     this.bgmGain = ctx.createGain();
-    this.bgmGain.gain.value = 0.22; // Well-balanced with game sound effects
+    this.bgmGain.gain.value = 0.24;
     this.bgmGain.connect(masterGain);
+
+    const snareLen = Math.floor(ctx.sampleRate * 0.12);
+    this._snareNoiseBuf = ctx.createBuffer(1, snareLen, ctx.sampleRate);
+    const sData = this._snareNoiseBuf.getChannelData(0);
+    for (let i = 0; i < snareLen; i++) {
+      sData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (snareLen * 0.28));
+    }
+
+    const hihatLen = Math.floor(ctx.sampleRate * 0.035);
+    this._hihatNoiseBuf = ctx.createBuffer(1, hihatLen, ctx.sampleRate);
+    const hData = this._hihatNoiseBuf.getChannelData(0);
+    for (let i = 0; i < hihatLen; i++) {
+      hData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (hihatLen * 0.2));
+    }
+
+    // Pre-render primary tracks
+    this._renderTrackBuffer(QQ_LOBBY_TRACKS[0]).catch(() => {});
+    this._renderTrackBuffer(QQ_RACE_TRACKS[0]).catch(() => {});
   }
 
-  start(trackIndex = this.currentTrackIndex) {
+  get activeList() {
+    return this.mode === 'race' ? QQ_RACE_TRACKS : QQ_LOBBY_TRACKS;
+  }
+
+  get activeIndex() {
+    return this.mode === 'race' ? this.raceIndex : this.lobbyIndex;
+  }
+
+  setMode(newMode, autoPlay = true, randomize = true) {
+    const validMode = (newMode === 'race') ? 'race' : 'lobby';
+    const list = (validMode === 'race') ? QQ_RACE_TRACKS : QQ_LOBBY_TRACKS;
+    if (randomize && list.length > 0) {
+      const randIdx = Math.floor(Math.random() * list.length);
+      if (validMode === 'race') {
+        this.raceIndex = randIdx;
+      } else {
+        this.lobbyIndex = randIdx;
+      }
+    }
+    this.mode = validMode;
+    if (this.isPlaying || autoPlay) {
+      this.start(this.activeIndex, this.mode);
+    }
+  }
+
+  async _renderTrackBuffer(track) {
+    if (!track) return null;
+    const cacheKey = track.id;
+    if (this._renderedBuffers[cacheKey]) return this._renderedBuffers[cacheKey];
+    if (this._renderingPromises[cacheKey]) return this._renderingPromises[cacheKey];
+
+    const OfflineCtxClass = typeof window !== 'undefined' && (window.OfflineAudioContext || window.webkitOfflineAudioContext);
+    if (!OfflineCtxClass) return null;
+
+    const bpm = track.bpm;
+    const stepDuration = (60 / bpm) / 4;
+    const totalSteps = 64; // 4-bar loop
+    const totalDuration = totalSteps * stepDuration;
+    const sampleRate = this.engine.ctx?.sampleRate || 44100;
+
+    this._renderingPromises[cacheKey] = (async () => {
+      try {
+        const offCtx = new OfflineCtxClass(2, Math.ceil(sampleRate * totalDuration), sampleRate);
+        const snareLen = Math.floor(sampleRate * 0.12);
+        const sBuf = offCtx.createBuffer(1, snareLen, sampleRate);
+        const sD = sBuf.getChannelData(0);
+        for (let i = 0; i < snareLen; i++) sD[i] = (Math.random() * 2 - 1) * Math.exp(-i / (snareLen * 0.28));
+
+        const hihatLen = Math.floor(sampleRate * 0.035);
+        const hBuf = offCtx.createBuffer(1, hihatLen, sampleRate);
+        const hD = hBuf.getChannelData(0);
+        for (let i = 0; i < hihatLen; i++) hD[i] = (Math.random() * 2 - 1) * Math.exp(-i / (hihatLen * 0.2));
+
+        const bus = offCtx.createGain();
+        bus.gain.value = 1.0;
+        bus.connect(offCtx.destination);
+
+        const drumStyle = track.drumStyle || 'four-on-the-floor';
+
+        for (let step = 0; step < totalSteps; step++) {
+          const t = step * stepDuration;
+
+          let isKick = false, isSnare = false;
+          if (drumStyle === 'rock-driving') {
+            isKick = (step % 8 === 0) || (step % 8 === 3) || (step % 16 === 10);
+            isSnare = (step % 8 === 4) || (step % 16 === 14);
+          } else if (drumStyle === 'hiphop-heavy') {
+            isKick = (step % 16 === 0) || (step % 16 === 6) || (step % 16 === 10);
+            isSnare = (step % 16 === 4) || (step % 16 === 12);
+          } else if (drumStyle === 'rnb-groove') {
+            isKick = (step % 16 === 0) || (step % 16 === 10);
+            isSnare = (step % 16 === 4) || (step % 16 === 12);
+          } else {
+            isKick = (step % 4 === 0);
+            isSnare = (step % 8 === 4) || (step % 16 === 15);
+          }
+
+          if (isKick) {
+            const osc = offCtx.createOscillator(), g = offCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(drumStyle === 'hiphop-heavy' ? 120 : 145, t);
+            osc.frequency.exponentialRampToValueAtTime(drumStyle === 'hiphop-heavy' ? 28 : 36, t + 0.10);
+            g.gain.setValueAtTime(0.38, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            osc.connect(g); g.connect(bus); osc.start(t); osc.stop(t + 0.13);
+          }
+
+          if (isSnare) {
+            const node = offCtx.createBufferSource(); node.buffer = sBuf;
+            const flt = offCtx.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 950;
+            const g = offCtx.createGain(); g.gain.setValueAtTime(0.20, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            node.connect(flt); flt.connect(g); g.connect(bus); node.start(t);
+
+            const osc = offCtx.createOscillator(), og = offCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(185, t);
+            osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
+            og.gain.setValueAtTime(0.12, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+            osc.connect(og); og.connect(bus); osc.start(t); osc.stop(t + 0.08);
+          }
+
+          // Hi-hat
+          const accented = (step % 2 === 1);
+          const hNode = offCtx.createBufferSource(); hNode.buffer = hBuf;
+          const hFlt = offCtx.createBiquadFilter(); hFlt.type = 'bandpass'; hFlt.frequency.value = 7500; hFlt.Q.value = 3;
+          const hGain = offCtx.createGain(); hGain.gain.setValueAtTime(accented ? 0.045 : 0.025, t);
+          hGain.gain.exponentialRampToValueAtTime(0.0005, t + 0.035);
+          hNode.connect(hFlt); hFlt.connect(hGain); hGain.connect(bus); hNode.start(t);
+
+          // Bass
+          const bassNote = track.bass[step % track.bass.length];
+          if (bassNote && NOTE_FREQS[bassNote]) {
+            const bOsc = offCtx.createOscillator(), bFlt = offCtx.createBiquadFilter(), bG = offCtx.createGain();
+            bOsc.type = 'sawtooth'; bOsc.frequency.setValueAtTime(NOTE_FREQS[bassNote], t);
+            bFlt.type = 'lowpass'; bFlt.Q.value = 4.5; bFlt.frequency.setValueAtTime(850, t);
+            bFlt.frequency.exponentialRampToValueAtTime(240, t + stepDuration * 0.85);
+            bG.gain.setValueAtTime(0.22, t); bG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.85);
+            bOsc.connect(bFlt); bFlt.connect(bG); bG.connect(bus); bOsc.start(t); bOsc.stop(t + stepDuration * 0.85);
+          }
+
+          // Melody Hook
+          const leadNote = track.melody[step % track.melody.length];
+          if (leadNote && NOTE_FREQS[leadNote]) {
+            const lFreq = NOTE_FREQS[leadNote], lDur = stepDuration * 1.5;
+            const lOsc = offCtx.createOscillator(), lSub = offCtx.createOscillator(), lFlt = offCtx.createBiquadFilter(), lG = offCtx.createGain();
+            lOsc.type = (track.category === 'race') ? 'sawtooth' : 'square';
+            lOsc.frequency.setValueAtTime(lFreq, t);
+            lSub.type = 'sawtooth'; lSub.frequency.setValueAtTime(lFreq * 0.5, t);
+            lFlt.type = 'lowpass'; lFlt.frequency.setValueAtTime(2400, t); lFlt.Q.value = 2.2;
+            lG.gain.setValueAtTime(0.13, t); lG.gain.exponentialRampToValueAtTime(0.001, t + lDur);
+            lOsc.connect(lFlt); lSub.connect(lFlt); lFlt.connect(lG); lG.connect(bus);
+            lOsc.start(t); lSub.start(t); lOsc.stop(t + lDur); lSub.stop(t + lDur);
+          }
+
+          // Chords
+          if (step % 16 === 0) {
+            const chord = track.chords[Math.floor(step / 16) % track.chords.length];
+            const cDur = stepDuration * 16 * 0.9;
+            for (const n of (chord || [])) {
+              if (!NOTE_FREQS[n]) continue;
+              const cOsc = offCtx.createOscillator(), cG = offCtx.createGain();
+              cOsc.type = 'triangle'; cOsc.frequency.setValueAtTime(NOTE_FREQS[n], t);
+              cG.gain.setValueAtTime(0.001, t); cG.gain.linearRampToValueAtTime(0.025, t + 0.15);
+              cG.gain.exponentialRampToValueAtTime(0.0005, t + cDur);
+              cOsc.connect(cG); cG.connect(bus); cOsc.start(t); cOsc.stop(t + cDur);
+            }
+          }
+        }
+
+        const rendered = await offCtx.startRendering();
+        this._renderedBuffers[cacheKey] = rendered;
+        return rendered;
+      } catch (err) {
+        console.warn('Offline BGM rendering fallback:', err);
+        return null;
+      }
+    })();
+
+    return this._renderingPromises[cacheKey];
+  }
+
+  start(trackIndex, mode = this.mode) {
     if (!this.engine.ctx) return;
-    if (this.isPlaying && this.currentTrackIndex === trackIndex) return;
     this.stop();
-    this.currentTrackIndex = (trackIndex + BGM_TRACKS.length) % BGM_TRACKS.length;
+    this.mode = mode;
+    const list = this.activeList;
+    if (typeof trackIndex === 'number') {
+      const idx = (trackIndex + list.length) % list.length;
+      if (this.mode === 'race') this.raceIndex = idx;
+      else this.lobbyIndex = idx;
+    }
+    this.currentTrackIndex = this.activeIndex;
+    const track = list[this.activeIndex];
     this.isPlaying = true;
+
+    // 1. Check if user has uploaded real MP3 audio for this track
+    const customAudio = this.customAudioMap.get(track.id);
+    if (customAudio && customAudio.url) {
+      this._playRealAudio(customAudio.url);
+      return;
+    }
+
+    // 2. Play official game built-in MP3 original track
+    if (track.builtinUrl) {
+      this._playRealAudio(track.builtinUrl);
+      return;
+    }
+
+    // Check if offline rendered buffer is available
+    const existing = this._renderedBuffers[track.id];
+    if (existing) {
+      this._playLoopBuffer(existing);
+      return;
+    }
+
+    // Try pre-rendering and playing, with immediate fallback to step sequencer
+    this._renderTrackBuffer(track).then(buf => {
+      if (this.isPlaying && buf && !this.customAudioMap.has(track.id) && !track.builtinUrl) {
+        if (this.timerId) { clearTimeout(this.timerId); this.timerId = null; }
+        this._playLoopBuffer(buf);
+      }
+    }).catch(() => {});
+
+    // Fallback: start step sequencer until buffer is ready
     this.stepIndex = 0;
     this.nextStepTime = this.engine.ctx.currentTime + 0.05;
     this._scheduler();
   }
 
+  _playRealAudio(url) {
+    if (this._activeSource) {
+      try { this._activeSource.stop(); this._activeSource.disconnect(); } catch (e) {}
+      this._activeSource = null;
+    }
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+    if (!this._htmlAudio) {
+      this._htmlAudio = new Audio();
+      this._htmlAudio.loop = true;
+      this._htmlAudio.preload = 'auto';
+      this._htmlAudio.addEventListener('ended', () => {
+        if (this.isPlaying) {
+          this.nextTrack();
+        }
+      });
+    }
+    this._syncRealAudioVolume();
+
+    // Check if same URL
+    const isSameUrl = (this._htmlAudio.src === url || (this._htmlAudio.src && this._htmlAudio.src.endsWith(url.replace(/^\.\//, ''))));
+    if (!isSameUrl) {
+      this._htmlAudio.src = url;
+    }
+    this._htmlAudio.currentTime = 0;
+
+    const playPromise = this._htmlAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Real audio playback auto-play interaction required:', err);
+        const unlock = () => {
+          if (this.isPlaying && this._htmlAudio) {
+            this._htmlAudio.play().catch(() => {});
+          }
+          window.removeEventListener('pointerdown', unlock);
+          window.removeEventListener('keydown', unlock);
+          window.removeEventListener('touchstart', unlock);
+        };
+        window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+        window.addEventListener('keydown', unlock, { once: true, passive: true });
+        window.addEventListener('touchstart', unlock, { once: true, passive: true });
+      });
+    }
+  }
+
+  _syncRealAudioVolume() {
+    if (!this._htmlAudio) return;
+    const masterVol = (this.engine && typeof this.engine.masterVolume === 'number') ? this.engine.masterVolume : 0.85;
+    const isMuted = !!(this.engine && this.engine.muted);
+    this._htmlAudio.volume = isMuted ? 0 : Math.max(0, Math.min(1, this.userVolume * masterVol));
+  }
+
+  setVolume(vol) {
+    this.userVolume = Math.max(0, Math.min(1, Number(vol) || 0));
+    this._syncRealAudioVolume();
+  }
+
+  getTrackById(trackId) {
+    return BGM_TRACKS.find(t => t.id === trackId);
+  }
+
+  hasRealAudio(trackId) {
+    if (this.customAudioMap.has(trackId)) return true;
+    const track = this.getTrackById(trackId);
+    return !!(track && track.builtinUrl);
+  }
+
+  getRealAudioInfo(trackId) {
+    if (this.customAudioMap.has(trackId)) {
+      const custom = this.customAudioMap.get(trackId);
+      return {
+        isCustom: true,
+        isBuiltin: false,
+        name: custom.name || '自定义原声 MP3',
+        size: custom.size,
+        updatedAt: custom.updatedAt,
+        url: custom.url
+      };
+    }
+    const track = this.getTrackById(trackId);
+    if (track && track.builtinUrl) {
+      return {
+        isCustom: false,
+        isBuiltin: true,
+        name: track.builtinName || `${track.title} - ${track.artist} (官方内置原声)`,
+        url: track.builtinUrl
+      };
+    }
+    return null;
+  }
+
+  async attachRealAudio(trackId, fileOrBlob, name = '') {
+    try {
+      const url = URL.createObjectURL(fileOrBlob);
+      const record = {
+        url,
+        blob: fileOrBlob,
+        name: name || fileOrBlob.name || trackId,
+        size: fileOrBlob.size,
+        updatedAt: Date.now()
+      };
+      this.customAudioMap.set(trackId, record);
+      await saveAudioToStorage(trackId, fileOrBlob, { name: record.name });
+      const currentTrack = this.getCurrentTrack();
+      if (this.isPlaying && currentTrack && currentTrack.id === trackId) {
+        this._playRealAudio(url);
+      }
+      return true;
+    } catch (e) {
+      console.error('attachRealAudio failed:', e);
+      return false;
+    }
+  }
+
+  async removeRealAudio(trackId) {
+    try {
+      const existing = this.customAudioMap.get(trackId);
+      if (existing && existing.url) {
+        try { URL.revokeObjectURL(existing.url); } catch (_) {}
+      }
+      this.customAudioMap.delete(trackId);
+      await removeAudioFromStorage(trackId);
+      const currentTrack = this.getCurrentTrack();
+      if (this.isPlaying && currentTrack && currentTrack.id === trackId) {
+        this.start(this.activeIndex, this.mode);
+      }
+      return true;
+    } catch (e) {
+      console.error('removeRealAudio failed:', e);
+      return false;
+    }
+  }
+
+  _playLoopBuffer(buf) {
+    if (!this.bgmGain || !this.engine.ctx || !buf) return;
+    if (this._activeSource) {
+      try { this._activeSource.stop(); this._activeSource.disconnect(); } catch (e) {}
+    }
+    const source = this.engine.ctx.createBufferSource();
+    source.buffer = buf;
+    source.loop = true;
+    source.connect(this.bgmGain);
+    source.start(0);
+    this._activeSource = source;
+  }
+
   stop() {
     this.isPlaying = false;
+    if (this._htmlAudio) {
+      try { this._htmlAudio.pause(); } catch (e) {}
+    }
+    if (this._activeSource) {
+      try { this._activeSource.stop(); this._activeSource.disconnect(); } catch (e) {}
+      this._activeSource = null;
+    }
     if (this.timerId) {
       clearTimeout(this.timerId);
       this.timerId = null;
@@ -88,9 +659,10 @@ export class RacingBgmPlayer {
   }
 
   nextTrack() {
-    const nextIdx = (this.currentTrackIndex + 1) % BGM_TRACKS.length;
-    this.start(nextIdx);
-    return BGM_TRACKS[this.currentTrackIndex];
+    const list = this.activeList;
+    const nextIdx = (this.activeIndex + 1) % list.length;
+    this.start(nextIdx, this.mode);
+    return this.getCurrentTrack();
   }
 
   toggle() {
@@ -104,23 +676,24 @@ export class RacingBgmPlayer {
   }
 
   getCurrentTrack() {
-    return BGM_TRACKS[this.currentTrackIndex];
+    const list = this.activeList;
+    return list[this.activeIndex] || list[0];
   }
 
   getCurrentTrackInfo() {
     return this.getCurrentTrack();
   }
 
-  startTrack(trackIndex = this.currentTrackIndex) {
-    return this.start(trackIndex);
+  startTrack(trackIndex = this.activeIndex) {
+    return this.start(trackIndex, this.mode);
   }
 
   _scheduler() {
     if (!this.isPlaying || !this.engine.ctx) return;
     const ctx = this.engine.ctx;
+    const track = this.getCurrentTrack();
     while (this.nextStepTime < ctx.currentTime + this.scheduleAheadTime) {
-      this._scheduleStep(this.stepIndex, this.nextStepTime);
-      const track = BGM_TRACKS[this.currentTrackIndex];
+      this._scheduleStep(this.stepIndex, this.nextStepTime, track);
       const stepDuration = (60 / track.bpm) / 4; // 16th note step
       this.nextStepTime += stepDuration;
       this.stepIndex = (this.stepIndex + 1) % (track.melody.length);
@@ -128,45 +701,40 @@ export class RacingBgmPlayer {
     this.timerId = setTimeout(() => this._scheduler(), this.lookahead * 1000);
   }
 
-  _scheduleStep(step, time) {
+  _scheduleStep(step, time, track) {
     if (!this.bgmGain || this.engine.muted) return;
-    const track = BGM_TRACKS[this.currentTrackIndex];
     const ctx = this.engine.ctx;
+    const drumStyle = track.drumStyle || 'four-on-the-floor';
 
-    // 1. Drums (Four-on-the-floor kick, snappy snare, 16th hi-hats)
-    const isQuarter = (step % 4 === 0);
-    const isSnare = (step % 8 === 4) || (step % 16 === 15);
-    const isHihat = true;
-
-    // Kick drum
-    if (isQuarter) {
-      this._playKick(time);
+    let isKick = false, isSnare = false;
+    if (drumStyle === 'rock-driving') {
+      isKick = (step % 8 === 0) || (step % 8 === 3) || (step % 16 === 10);
+      isSnare = (step % 8 === 4) || (step % 16 === 14);
+    } else if (drumStyle === 'hiphop-heavy') {
+      isKick = (step % 16 === 0) || (step % 16 === 6) || (step % 16 === 10);
+      isSnare = (step % 16 === 4) || (step % 16 === 12);
+    } else if (drumStyle === 'rnb-groove') {
+      isKick = (step % 16 === 0) || (step % 16 === 10);
+      isSnare = (step % 16 === 4) || (step % 16 === 12);
+    } else {
+      isKick = (step % 4 === 0);
+      isSnare = (step % 8 === 4) || (step % 16 === 15);
     }
 
-    // Snare drum
-    if (isSnare) {
-      this._playSnare(time);
-    }
+    if (isKick) this._playKick(time);
+    if (isSnare) this._playSnare(time);
+    this._playHihat(time, (step % 2 === 1) ? 0.045 : 0.025);
 
-    // Hi-hat (Crisp 16th notes with velocity accent)
-    if (isHihat) {
-      const accented = (step % 2 === 1); // Upbeat accent
-      this._playHihat(time, accented ? 0.045 : 0.025);
-    }
-
-    // 2. Bassline (Classic QQ speed driving synth bass)
     const bassNote = track.bass[step % track.bass.length];
     if (bassNote && NOTE_FREQS[bassNote]) {
       this._playSynthBass(NOTE_FREQS[bassNote], time, (60 / track.bpm) / 4 * 0.85);
     }
 
-    // 3. Melody / Lead hook
     const leadNote = track.melody[step % track.melody.length];
-    if (leadNote && NOTE_FREQS[leadNote] && (step % 2 === 0 || Math.random() < 0.6)) {
-      this._playSynthLead(NOTE_FREQS[leadNote], time, (60 / track.bpm) / 4 * 1.6);
+    if (leadNote && NOTE_FREQS[leadNote]) {
+      this._playSynthLead(NOTE_FREQS[leadNote], time, (60 / track.bpm) / 4 * 1.5);
     }
 
-    // 4. Background chord pads / arps (every bar = 16 steps)
     if (step % 16 === 0) {
       const chordIndex = Math.floor(step / 16) % track.chords.length;
       const chord = track.chords[chordIndex];
@@ -193,13 +761,14 @@ export class RacingBgmPlayer {
 
   _playSnare(time) {
     const ctx = this.engine.ctx;
-    // Noise snap
-    const len = Math.floor(ctx.sampleRate * 0.12);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.28));
-    }
+    // Noise snap using reusable pre-generated buffer
+    const buf = this._snareNoiseBuf || (() => {
+      const len = Math.floor(ctx.sampleRate * 0.12);
+      const b = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.28));
+      return (this._snareNoiseBuf = b);
+    })();
     const node = ctx.createBufferSource();
     node.buffer = buf;
     const filter = ctx.createBiquadFilter();
@@ -232,12 +801,14 @@ export class RacingBgmPlayer {
 
   _playHihat(time, volume = 0.03) {
     const ctx = this.engine.ctx;
-    const len = Math.floor(ctx.sampleRate * 0.035);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.2));
-    }
+    // Noise using reusable pre-generated buffer
+    const buf = this._hihatNoiseBuf || (() => {
+      const len = Math.floor(ctx.sampleRate * 0.035);
+      const b = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.2));
+      return (this._hihatNoiseBuf = b);
+    })();
     const node = ctx.createBufferSource();
     node.buffer = buf;
     const filter = ctx.createBiquadFilter();
@@ -351,7 +922,8 @@ export class SoundEngine {
       if (this.ctx.state === 'suspended') this.ctx.resume();
       return;
     }
-    const AudioCtx = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
+    const AudioCtx = (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) ||
+      (typeof globalThis !== 'undefined' && globalThis.AudioContext) || null;
     if (!AudioCtx) return;
 
     this.ctx = new AudioCtx();
@@ -386,9 +958,27 @@ export class SoundEngine {
     this.windSource.start();
   }
 
-  startBgm(trackIndex = 0) {
+  setBgmMode(mode, autoPlay = true, randomize = true) {
     this.init();
-    this.bgmPlayer.start(trackIndex);
+    this.bgmPlayer.setMode(mode, autoPlay, randomize);
+  }
+
+  startBgm(trackIndex = 0, mode = undefined) {
+    this.init();
+    if (mode) this.bgmPlayer.mode = mode;
+    this.bgmPlayer.start(trackIndex, this.bgmPlayer.mode);
+  }
+
+  startLobbyBgm(trackIndex = 0) {
+    this.init();
+    this.bgmPlayer.setMode('lobby', false);
+    this.bgmPlayer.start(trackIndex, 'lobby');
+  }
+
+  startRaceBgm(trackIndex = 0) {
+    this.init();
+    this.bgmPlayer.setMode('race', false);
+    this.bgmPlayer.start(trackIndex, 'race');
   }
 
   stopBgm() {
@@ -409,6 +999,10 @@ export class SoundEngine {
     return this.bgmPlayer.getCurrentTrack().title;
   }
 
+  getBgmInfo() {
+    return this.bgmPlayer.getCurrentTrack();
+  }
+
   isBgmPlaying() {
     return this.bgmPlayer.isPlaying;
   }
@@ -417,6 +1011,9 @@ export class SoundEngine {
     this.muted = !!muted;
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 0.85, this.ctx.currentTime, 0.05);
+    }
+    if (this.bgmPlayer) {
+      this.bgmPlayer._syncRealAudioVolume();
     }
   }
 
@@ -427,6 +1024,9 @@ export class SoundEngine {
 
   updateAmbience(kph, pedaling = false, dt = 0.016) {
     if (!this.ctx || this.muted || !this.windGain || !this.windFilter) return;
+
+    if (Math.abs(kph - (this._lastAmbienceKph || 0)) < 0.6) return;
+    this._lastAmbienceKph = kph;
 
     // Wind volume and pitch scaling with bike speed (0 - 65 km/h)
     const ratio = Math.min(1.2, Math.max(0, kph / 55));

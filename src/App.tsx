@@ -21,7 +21,13 @@ import {
   ShieldCheck,
   Zap,
   Play,
-  Maximize2
+  Maximize2,
+  Minimize2,
+  Download,
+  Key,
+  GitCommit,
+  ArrowUpRight,
+  Share2
 } from 'lucide-react';
 
 interface ProjectStatus {
@@ -29,6 +35,8 @@ interface ProjectStatus {
   hasOrig: boolean;
   allFilesCount: number;
   docFiles: string[];
+  commitSha?: string;
+  version?: string;
 }
 
 export default function App() {
@@ -38,6 +46,7 @@ export default function App() {
     hasOrig: false,
     allFilesCount: 0,
     docFiles: [],
+    commitSha: 'ad1b1ea',
   });
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
 
@@ -51,6 +60,14 @@ export default function App() {
   const [isCloning, setIsCloning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Git Push states
+  const [pushRepoUrl, setPushRepoUrl] = useState('https://github.com/ganghuxie/lakeriders-web-demo.git');
+  const [pushToken, setPushToken] = useState('');
+  const [pushBranch, setPushBranch] = useState('main');
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushSuccess, setPushSuccess] = useState<string | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
+
   // Test Runner states
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
@@ -60,6 +77,17 @@ export default function App() {
   const [isBuildingBundle, setIsBuildingBundle] = useState(false);
   const [bundleStatus, setBundleStatus] = useState<string | null>(null);
   const [gameFrameKey, setGameFrameKey] = useState(1);
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMaximized) {
+        setIsMaximized(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMaximized]);
 
   const fetchStatus = async () => {
     try {
@@ -193,6 +221,33 @@ export default function App() {
     }
   };
 
+  const handleGitPush = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pushRepoUrl.trim()) return;
+    try {
+      setIsPushing(true);
+      setPushError(null);
+      setPushSuccess(null);
+      const res = await fetch('/api/git-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl: pushRepoUrl.trim(),
+          token: pushToken.trim() || undefined,
+          branch: pushBranch.trim() || 'main',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '推送到 GitHub 失败');
+      setPushSuccess(data.message || '代码成功推送到 GitHub 仓库！');
+      await fetchStatus();
+    } catch (err: any) {
+      setPushError(err.message || '推送到 GitHub 出现异常');
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header Bar */}
@@ -259,8 +314,8 @@ export default function App() {
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <FolderOpen className="w-3.5 h-3.5" />
-            代码导入与归档
+            <GitBranch className="w-3.5 h-3.5" />
+            GitHub 同步与归档
           </button>
         </div>
 
@@ -312,26 +367,49 @@ export default function App() {
                     <RefreshCw className="w-3.5 h-3.5" />
                     刷新画面
                   </button>
+                  <button
+                    onClick={() => setIsMaximized(!isMaximized)}
+                    className="flex items-center gap-1 text-sky-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded transition text-xs font-medium"
+                    title={isMaximized ? "退出最大化 (按 ESC)" : "进入沉浸网页全屏"}
+                  >
+                    {isMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    {isMaximized ? "退出全屏" : "沉浸全屏"}
+                  </button>
                   <a
                     href="/game/index.html"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-sky-400 hover:text-sky-300 px-2 py-1"
+                    className="flex items-center gap-1 text-slate-400 hover:text-sky-300 px-2 py-1 text-xs"
+                    title="新窗口全屏独立运行"
                   >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    全屏打开
+                    新标签打开
                   </a>
                 </div>
               </div>
 
               {/* Iframe with Game */}
-              <div className="relative w-full h-[720px] bg-black">
+              <div className={isMaximized ? "fixed inset-0 z-50 bg-black flex flex-col" : "relative w-full h-[720px] bg-black"}>
+                {isMaximized && (
+                  <div className="bg-slate-900/90 backdrop-blur px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs z-10">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-white font-medium">LakeRiders 赛里木湖骑行 · 沉浸全屏模式 (按 ESC 退出)</span>
+                    </div>
+                    <button
+                      onClick={() => setIsMaximized(false)}
+                      className="flex items-center gap-1 bg-rose-600/80 hover:bg-rose-500 text-white px-3 py-1 rounded transition text-xs font-semibold"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      退出全屏
+                    </button>
+                  </div>
+                )}
                 <iframe
                   key={gameFrameKey}
                   id="game-frame"
                   src={`/game/index.html?v=${gameFrameKey}`}
                   title="LakeRiders Game"
-                  className="w-full h-full border-0"
+                  className={isMaximized ? "w-full flex-1 border-0" : "w-full h-full border-0"}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 />
               </div>
@@ -575,19 +653,296 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: Files and Import / Re-import */}
+        {/* TAB 4: Files, GitHub Sync, and Bundle Export */}
         {activeTab === 'files' && (
           <div className="space-y-6">
+            {/* Version & Codex Testing Banner */}
+            <div className="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-sky-950/70 border border-indigo-500/30 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                    <GitCommit className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      最新开发版本已本地提交 · 准备交付 Codex 测试
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-medium rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        commit {status.commitSha || 'ad1b1ea'}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      分支: <code className="text-indigo-300 font-mono">main</code> · 包含所有最新物理、UI与音频更新
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href="/api/download-zip"
+                    download="LakeRiders-latest.zip"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 rounded-xl border border-emerald-500/40 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    下载最新 ZIP 包
+                  </a>
+                  <a
+                    href="/api/download-bundle"
+                    download="LakeRiders.bundle"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-sky-300 bg-sky-950/60 hover:bg-sky-900/60 rounded-xl border border-sky-500/40 transition"
+                  >
+                    <GitBranch className="w-3.5 h-3.5" />
+                    下载 Git Bundle 归档
+                  </a>
+                </div>
+              </div>
+
+              {/* Updates summary list */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="font-semibold text-sky-300 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span>碰撞摔车机制重构</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    ≥80km/h 撞击障碍摔车；&lt;80km/h 碰护栏或障碍震屏并平滑减速，绝不摔车。
+                  </p>
+                </div>
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>全方位退出游戏入口</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    HUD 顶栏退出按钮、ESC 暂停菜单一键退出、以及结算页平稳返回大厅。
+                  </p>
+                </div>
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>大厅背景音乐自动开播</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    隐藏用户 MP3 导入，返回大厅默认随机开播并显示歌曲名，支持暂停/切歌。
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid of Git & Sync tools */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Method 1: Drop/Upload Zip */}
+              {/* Method 1: Push to GitHub */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm">
+                    <Share2 className="w-4 h-4" />
+                    <span>推送到 GitHub 远程仓库 (Push)</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    输入你的 GitHub 仓库地址与访问令牌（PAT），一键将本地最新开发分支代码推送到远程仓库：
+                  </p>
+                </div>
+
+                <form onSubmit={handleGitPush} className="space-y-3.5 flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                        <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                        GitHub 仓库 URL
+                      </label>
+                      <input
+                        type="text"
+                        value={pushRepoUrl}
+                        onChange={(e) => setPushRepoUrl(e.target.value)}
+                        placeholder="https://github.com/username/LakeRiders.git"
+                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                        <Key className="w-3.5 h-3.5 text-slate-400" />
+                        Personal Access Token (PAT 密钥)
+                      </label>
+                      <input
+                        type="password"
+                        value={pushToken}
+                        onChange={(e) => setPushToken(e.target.value)}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (具有 repo 权限)"
+                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition"
+                      />
+                      <p className="text-[11px] text-slate-500">仅用于本次推送鉴权，绝不保存或写入公开日志</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                        <GitBranch className="w-3.5 h-3.5 text-slate-400" />
+                        目标分支 (Branch)
+                      </label>
+                      <input
+                        type="text"
+                        value={pushBranch}
+                        onChange={(e) => setPushBranch(e.target.value)}
+                        placeholder="main"
+                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!pushRepoUrl.trim() || isPushing}
+                    className={`w-full py-2.5 px-4 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition ${
+                      !pushRepoUrl.trim() || isPushing
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'
+                    }`}
+                  >
+                    {isPushing ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        正在推送到远程 GitHub 仓库...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-4 h-4" />
+                        立即推送到 GitHub
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {pushSuccess && (
+                  <div className="bg-emerald-950/60 border border-emerald-500/40 rounded-xl p-3.5 flex items-center gap-2.5 text-emerald-300 text-xs">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{pushSuccess}</span>
+                  </div>
+                )}
+
+                {pushError && (
+                  <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-3.5 flex items-center gap-2.5 text-rose-300 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{pushError}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Method 2: Direct Zip & Bundle Export */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+                    <Download className="w-4 h-4" />
+                    <span>导出工程文件包 (供 Codex 直接获取)</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    若无需联网推送，可通过下载或 cURL 直接提取完整开发目录与测试套件：
+                  </p>
+                </div>
+
+                <div className="space-y-3 flex-1 flex flex-col justify-center">
+                  <a
+                    href="/api/download-zip"
+                    download="LakeRiders-latest.zip"
+                    className="w-full py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-850 border border-emerald-500/30 hover:border-emerald-500/60 text-emerald-300 flex items-center justify-between text-xs transition group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileArchive className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-200">LakeRiders-latest.zip</div>
+                        <div className="text-[11px] text-slate-400">完整源代码与静态素材压缩包</div>
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-emerald-400" />
+                  </a>
+
+                  <a
+                    href="/api/download-bundle"
+                    download="LakeRiders.bundle"
+                    className="w-full py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-850 border border-sky-500/30 hover:border-sky-500/60 text-sky-300 flex items-center justify-between text-xs transition group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <GitBranch className="w-5 h-5 text-sky-400 group-hover:scale-110 transition-transform" />
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-200">LakeRiders.bundle</div>
+                        <div className="text-[11px] text-slate-400">含全部 Git 分支与历史提交的原生归档</div>
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-sky-400" />
+                  </a>
+
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <span className="text-[11px] font-medium text-slate-400">Codex / 命令行快速拉取：</span>
+                    <pre className="text-[11px] text-sky-300 font-mono bg-slate-900 px-2 py-1.5 rounded overflow-x-auto select-all">
+                      curl -O {window.location.origin}/api/download-zip
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>文件总数: {status.allFilesCount || 75} 个</span>
+                  <span className="text-emerald-400">已包含 Phase 09B-13 全套单测</span>
+                </div>
+              </div>
+
+              {/* Method 3: Git Clone (Pull) */}
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sky-400 font-semibold text-sm">
-                    <FileArchive className="w-4 h-4" />
+                    <GitBranch className="w-4 h-4" />
+                    <span>从远程 Git 仓库拉取 (Clone / Pull)</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    从 GitHub 或 Gitee 拉取指定仓库分支并载入工作区：
+                  </p>
+                </div>
+
+                <form onSubmit={handleGitClone} className="space-y-4 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                      Git 仓库 URL
+                    </label>
+                    <input
+                      type="text"
+                      value={gitUrl}
+                      onChange={(e) => setGitUrl(e.target.value)}
+                      placeholder="https://github.com/username/LakeRiders.git"
+                      className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!gitUrl.trim() || isCloning}
+                    className={`w-full py-2.5 px-4 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition ${
+                      !gitUrl.trim() || isCloning
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                        : 'bg-sky-600 hover:bg-sky-500 text-white'
+                    }`}
+                  >
+                    {isCloning ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        正在克隆远程仓库...
+                      </>
+                    ) : (
+                      <>
+                        <GitBranch className="w-4 h-4" />
+                        拉取远程仓库代码
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Method 4: Drop/Upload Zip */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-slate-300 font-semibold text-sm">
+                    <Upload className="w-4 h-4 text-sky-400" />
                     <span>上传或重新覆盖 .zip 压缩包</span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    如果有更新版本的本地工程压缩包，可随时在此重新上传，系统会自动在 <code className="text-slate-300">LakeRiders_Dev</code> 建立工作目录：
+                    上传本地工程压缩包，自动解压并在工作区生效：
                   </p>
                 </div>
 
@@ -596,7 +951,7 @@ export default function App() {
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
                     isDragging
                       ? 'border-sky-400 bg-sky-500/10'
                       : file
@@ -612,27 +967,25 @@ export default function App() {
                     onChange={handleFileChange}
                   />
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       file ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'
                     }`}
                   >
-                    {file ? <FileArchive className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
+                    {file ? <FileArchive className="w-5 h-5" /> : <Upload className="w-5 h-5 text-slate-400" />}
                   </div>
 
                   {file ? (
                     <div>
-                      <p className="text-sm font-medium text-emerald-300 break-all">{file.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        大小: {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      <p className="text-xs font-medium text-emerald-300 break-all">{file.name}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
                       </p>
-                      <p className="text-xs text-sky-400 mt-2">点击或重新拖拽更换</p>
                     </div>
                   ) : (
                     <div>
-                      <p className="text-sm font-medium text-slate-200">
-                        拖入压缩包，或 <span className="text-sky-400 underline">点击选择</span>
+                      <p className="text-xs font-medium text-slate-300">
+                        拖入或 <span className="text-sky-400 underline">点击上传</span> 压缩包
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">自动解压并保存原始副本至 LakeRiders_Original</p>
                     </div>
                   )}
                 </div>
@@ -658,57 +1011,6 @@ export default function App() {
                     </>
                   )}
                 </button>
-              </div>
-
-              {/* Method 2: Git Clone */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm">
-                    <GitBranch className="w-4 h-4" />
-                    <span>通过 Git 仓库地址一键拉取</span>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    支持 GitHub / Gitee 仓库地址：
-                  </p>
-                </div>
-
-                <form onSubmit={handleGitClone} className="space-y-4 flex-1 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-slate-400" />
-                      Git 仓库 URL
-                    </label>
-                    <input
-                      type="text"
-                      value={gitUrl}
-                      onChange={(e) => setGitUrl(e.target.value)}
-                      placeholder="https://github.com/username/LakeRiders.git"
-                      className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!gitUrl.trim() || isCloning}
-                    className={`w-full py-2.5 px-4 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition ${
-                      !gitUrl.trim() || isCloning
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                    }`}
-                  >
-                    {isCloning ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        正在克隆远程仓库...
-                      </>
-                    ) : (
-                      <>
-                        <GitBranch className="w-4 h-4" />
-                        拉取远程仓库代码
-                      </>
-                    )}
-                  </button>
-                </form>
               </div>
             </div>
 

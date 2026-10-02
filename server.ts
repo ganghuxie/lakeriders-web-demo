@@ -56,7 +56,7 @@ async function startServer() {
     }
 
     // Get git short SHA
-    let commitSha = 'f3a5310';
+    let commitSha = '1461fb5';
     try {
       commitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
     } catch {
@@ -71,13 +71,14 @@ async function startServer() {
       version: 'Phase 13',
       phase: 13,
       commitSha,
+      wsStatus: 'online',
       buildTime: new Date().toISOString(),
     });
   });
 
   // Health check endpoint - completely open and unauthenticated
   app.get(['/health', '/api/health'], (req, res) => {
-    let commitSha = 'f3a5310';
+    let commitSha = '1461fb5';
     try {
       commitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
     } catch {
@@ -99,14 +100,21 @@ async function startServer() {
       commitSha,
       uptime: Math.floor(process.uptime()),
       ws: '/ws',
+      wsStatus: 'online',
       timestamp: new Date().toISOString()
     });
   });
 
   // Serve the LakeRiders game frontend directly from LakeRiders_Dev/BrowserDemo
   const browserDemoDir = path.join(process.cwd(), 'LakeRiders_Dev', 'BrowserDemo');
-  app.use('/game', express.static(browserDemoDir, { index: 'index.html' }));
+  app.use('/game', express.static(browserDemoDir, {
+    index: 'index.html',
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  }));
   app.get('/game', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.sendFile(path.join(browserDemoDir, 'index.html'));
   });
 
@@ -228,6 +236,88 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ error: `Git 克隆失败: ${err.message}` });
+    }
+  });
+
+  // Git push endpoint to upload latest committed code to remote GitHub repo
+  app.post('/api/git-push', async (req, res) => {
+    try {
+      const { repoUrl, token, branch = 'main' } = req.body;
+      if (!repoUrl || typeof repoUrl !== 'string') {
+        return res.status(400).json({ error: '请提供有效的 GitHub 仓库地址 (如: https://github.com/username/repo.git)' });
+      }
+
+      let pushUrl = repoUrl.trim();
+      if (token && token.trim()) {
+        const cleanToken = token.trim();
+        if (pushUrl.startsWith('https://')) {
+          pushUrl = pushUrl.replace('https://', `https://${cleanToken}@`);
+        }
+      }
+
+      try {
+        execSync('git remote remove origin', { stdio: 'ignore' });
+      } catch (_) {}
+
+      execSync(`git remote add origin "${pushUrl}"`);
+
+      // Ensure all latest changes are committed before push
+      try {
+        execSync('git add -A');
+        execSync('git commit -m "update: latest LakeRiders files for codex testing"');
+      } catch (_) {
+        // Working directory already clean
+      }
+
+      const output = execSync(`git push -u origin ${branch} --force`, { encoding: 'utf-8' });
+
+      // Clean token from remote configuration
+      try {
+        execSync(`git remote set-url origin "${repoUrl.trim()}"`);
+      } catch (_) {}
+
+      res.json({
+        success: true,
+        message: `成功推送到 GitHub 远程仓库！分支: ${branch}`,
+        output,
+      });
+    } catch (err: any) {
+      try {
+        if (req.body?.repoUrl) {
+          execSync(`git remote set-url origin "${req.body.repoUrl.trim()}"`);
+        }
+      } catch (_) {}
+      const safeErr = (err.message || 'Push failed').replace(req.body?.token || '______', '***');
+      res.status(500).json({ error: `推送至 GitHub 失败: ${safeErr}` });
+    }
+  });
+
+  // Download complete project archive as ZIP
+  app.get('/api/download-zip', (req, res) => {
+    try {
+      const zipPath = path.join('/tmp', 'LakeRiders-latest.zip');
+      try {
+        execSync('git add -A && git commit -m "update: latest LakeRiders files"', { stdio: 'ignore' });
+      } catch (_) {}
+      execSync(`git archive --format=zip HEAD -o "${zipPath}"`);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="LakeRiders-latest.zip"');
+      res.sendFile(zipPath);
+    } catch (err: any) {
+      res.status(500).json({ error: `生成 ZIP 失败: ${err.message}` });
+    }
+  });
+
+  // Download complete git bundle with full revision history
+  app.get('/api/download-bundle', (req, res) => {
+    try {
+      const bundlePath = path.join('/tmp', 'LakeRiders.bundle');
+      execSync(`git bundle create "${bundlePath}" --all`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', 'attachment; filename="LakeRiders.bundle"');
+      res.sendFile(bundlePath);
+    } catch (err: any) {
+      res.status(500).json({ error: `生成 Git Bundle 失败: ${err.message}` });
     }
   });
 
